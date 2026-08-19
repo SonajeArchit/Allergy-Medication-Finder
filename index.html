@@ -1,0 +1,872 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Allergy Medication Finder — find what actually helps</title>
+<meta name="description" content="Search OTC allergy medicines by symptom, trigger, and age. Label details load live from the FDA's openFDA database.">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:opsz,wght@9..144,400;9..144,500;9..144,600;9..144,700&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Mono:wght@400;500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --bg: #EEF2E9;
+    --surface: #FFFFFF;
+    --surface-2: #F6F8F2;
+    --ink: #1C2620;
+    --ink-soft: #55635B;
+    --ink-faint: #8B9990;
+    --sage: #4F7355;
+    --sage-deep: #375139;
+    --sage-tint: #E4EDE1;
+    --gold: #B8901E;
+    --gold-soft: #F1E4B8;
+    --alert: #8B3A4A;
+    --alert-soft: #F3E1E2;
+    --line: #DCE3D6;
+  }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; padding: 0; }
+  body {
+    font-family: 'IBM Plex Sans', sans-serif;
+    background: var(--bg);
+    color: var(--ink);
+    -webkit-font-smoothing: antialiased;
+  }
+  :focus-visible { outline: 2px solid var(--sage); outline-offset: 2px; }
+  a { color: var(--sage-deep); }
+
+  .shell { max-width: 980px; margin: 0 auto; padding: 28px 20px 60px; }
+
+  .header { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; flex-wrap: wrap; margin-bottom: 28px; }
+  .brand-row { display: flex; align-items: center; gap: 13px; background: none; border: none; padding: 0; cursor: pointer; text-align: left; font-family: inherit; }
+  .logo-mark { width: 44px; height: 44px; flex-shrink: 0; }
+  .brand { font-family: 'Fraunces', serif; font-weight: 600; font-size: 26px; letter-spacing: -0.01em; color: var(--ink); }
+  .brand-mark { color: var(--sage); }
+  .tagline { font-size: 13.5px; color: var(--ink-soft); margin-top: 2px; }
+
+  .source-badge { display: flex; align-items: center; gap: 8px; background: var(--surface); border: 1px solid var(--line); border-radius: 999px; padding: 7px 14px; font-family: 'IBM Plex Mono', monospace; font-size: 11.5px; color: var(--ink-soft); }
+  .source-badge .dot { width: 7px; height: 7px; border-radius: 50%; background: var(--sage); flex-shrink: 0; }
+
+  .hero { margin-bottom: 26px; }
+  .hero h1 { font-family: 'Fraunces', serif; font-weight: 500; font-size: 28px; line-height: 1.25; margin: 0 0 16px; max-width: 560px; }
+
+  .search-box { position: relative; }
+  .search-box input { width: 100%; font-family: 'IBM Plex Sans', sans-serif; font-size: 15px; padding: 13px 46px 13px 42px; border-radius: 12px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+  .search-box input::placeholder { color: var(--ink-faint); }
+  .search-box svg { position: absolute; left: 14px; top: 50%; transform: translateY(-50%); color: var(--ink-faint); width: 18px; height: 18px; }
+
+  .filters { background: var(--surface-2); border: 1px solid var(--line); border-radius: 16px; padding: 18px 20px; margin-bottom: 22px; }
+  .filter-row { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; margin-bottom: 14px; }
+  .filter-row:last-of-type { margin-bottom: 0; }
+  .filter-label { font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; letter-spacing: 0.08em; text-transform: uppercase; color: var(--ink-faint); width: 92px; flex-shrink: 0; }
+
+  .tag { font-family: 'IBM Plex Sans', sans-serif; font-size: 13px; padding: 6px 13px; border-radius: 999px; border: 1px solid var(--line); background: var(--surface); color: var(--ink-soft); cursor: pointer; transition: all 0.15s ease; }
+  .tag:hover { border-color: var(--sage); color: var(--sage-deep); }
+  .tag.tag-active { background: var(--sage); border-color: var(--sage); color: white; }
+  .tag svg { vertical-align: -3px; margin-right: 4px; width: 13px; height: 13px; }
+
+  .misc-row { display: flex; align-items: center; gap: 22px; flex-wrap: wrap; padding-top: 12px; border-top: 1px dashed var(--line); }
+  .checkbox-label { display: flex; align-items: center; gap: 7px; font-size: 13px; color: var(--ink-soft); cursor: pointer; }
+  .checkbox-label input { accent-color: var(--sage); width: 15px; height: 15px; }
+  .select-wrap select { font-family: 'IBM Plex Sans', sans-serif; font-size: 13px; padding: 6px 10px; border-radius: 8px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); }
+  #resetBtn { display: inline-flex; align-items: center; gap: 6px; font-size: 12.5px; color: var(--ink-faint); background: none; border: none; cursor: pointer; margin-left: auto; font-family: inherit; }
+  #resetBtn:hover { color: var(--alert); }
+
+  .results-count { font-family: 'IBM Plex Mono', monospace; font-size: 12px; color: var(--ink-faint); margin-bottom: 14px; }
+
+  .grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 14px; }
+
+  .card { background: var(--surface); border: 1px solid var(--line); border-radius: 16px; padding: 18px; cursor: pointer; transition: transform 0.15s ease, box-shadow 0.15s ease; }
+  .card:hover { transform: translateY(-2px); box-shadow: 0 8px 20px rgba(28, 38, 32, 0.06); }
+
+  .card-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 10px; margin-bottom: 10px; }
+  .card-icon-row { display: flex; gap: 10px; }
+  .card-icon { width: 36px; height: 36px; border-radius: 10px; background: var(--sage-tint); color: var(--sage-deep); display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+  .card-icon svg { width: 18px; height: 18px; }
+  .card-name { font-family: 'Fraunces', serif; font-weight: 600; font-size: 17px; color: var(--ink); }
+  .card-brands { font-size: 12px; color: var(--ink-faint); margin-top: 1px; }
+
+  .badge { font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; padding: 3px 9px; border-radius: 999px; white-space: nowrap; }
+  .badge-calm { background: var(--sage-tint); color: var(--sage-deep); }
+  .badge-alert { background: var(--alert-soft); color: var(--alert); }
+
+  .card-desc { font-size: 13.5px; color: var(--ink-soft); line-height: 1.5; margin-bottom: 12px; }
+  .card-tags { display: flex; flex-wrap: wrap; gap: 5px; }
+  .mini-tag { font-size: 11px; color: var(--ink-faint); background: var(--surface-2); border: 1px solid var(--line); padding: 3px 8px; border-radius: 999px; }
+
+  .detail { margin-top: 14px; padding-top: 14px; border-top: 1px solid var(--line); cursor: default; }
+  .detail p { font-size: 13px; color: var(--ink-soft); line-height: 1.55; margin: 0 0 8px; }
+  .detail strong { color: var(--ink); font-weight: 600; }
+
+  .source-row { display: flex; align-items: center; justify-content: space-between; gap: 8px; background: var(--gold-soft); border-radius: 10px; padding: 7px 11px; margin: 10px 0; }
+  .source-tag { font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; color: #6B5417; }
+  .refresh-btn { font-family: 'IBM Plex Mono', monospace; font-size: 10.5px; background: none; border: none; color: #6B5417; cursor: pointer; text-decoration: underline; padding: 0; }
+
+  .source-link { display: inline-block; font-size: 11.5px; color: var(--ink-faint); margin-top: 2px; }
+
+  .empty-state { text-align: center; padding: 50px 20px; color: var(--ink-soft); }
+  .empty-state h3 { font-family: 'Fraunces', serif; font-size: 19px; color: var(--ink); margin-bottom: 6px; }
+  .empty-state button { margin-top: 14px; font-size: 13px; color: white; background: var(--sage); border: none; padding: 9px 18px; border-radius: 999px; cursor: pointer; font-family: inherit; }
+  .suggestion-link { margin-top: 0 !important; display: inline; background: none !important; color: var(--sage-deep) !important; border: none; padding: 0 !important; font-size: inherit !important; font-weight: 600; text-decoration: underline; text-underline-offset: 2px; cursor: pointer; border-radius: 0 !important; }
+  .suggestion-link:hover { color: var(--sage) !important; }
+
+  .disclaimer { margin-top: 32px; padding: 14px 16px; background: var(--surface); border: 1px solid var(--line); border-radius: 12px; font-size: 12.5px; color: var(--ink-faint); line-height: 1.6; }
+  .disclaimer strong { color: var(--ink-soft); }
+  .disclaimer a { color: var(--ink-soft); }
+
+  .hidden { display: none !important; }
+
+  .search-go { position: absolute; right: 6px; top: 50%; transform: translateY(-50%); width: 32px; height: 32px; border-radius: 50%; border: none; background: var(--sage); color: white; cursor: pointer; display: flex; align-items: center; justify-content: center; }
+  .search-go:hover { background: var(--sage-deep); }
+  .search-go svg { position: static; width: 15px; height: 15px; color: white; transform: none; }
+
+  .symptom-picker { display: flex; flex-direction: column; gap: 24px; margin-bottom: 30px; }
+  .symptom-group-label { display: flex; align-items: center; gap: 8px; font-family: 'IBM Plex Mono', monospace; font-size: 11px; letter-spacing: 0.07em; text-transform: uppercase; color: var(--sage-deep); margin-bottom: 11px; }
+  .symptom-group-label svg { width: 16px; height: 16px; flex-shrink: 0; }
+  .symptom-tiles { display: flex; flex-wrap: wrap; gap: 10px; }
+  .symptom-tile { font-family: 'IBM Plex Sans', sans-serif; font-size: 14px; padding: 12px 18px; border-radius: 14px; border: 1px solid var(--line); background: var(--surface); color: var(--ink); cursor: pointer; transition: all 0.15s ease; }
+  .symptom-tile:hover { border-color: var(--sage); background: var(--sage-tint); color: var(--sage-deep); transform: translateY(-1px); }
+
+  .back-link { display: inline-flex; align-items: center; gap: 5px; font-family: 'IBM Plex Mono', monospace; font-size: 12.5px; color: var(--ink-soft); background: none; border: none; cursor: pointer; padding: 0; margin-bottom: 16px; }
+  .back-link:hover { color: var(--sage-deep); }
+
+  .results-heading { font-family: 'Fraunces', serif; font-weight: 500; font-size: 25px; margin: 0 0 18px; }
+
+  .food-allergy-note { background: var(--alert-soft); border: 1px solid var(--alert); border-radius: 12px; padding: 14px 16px; font-size: 13px; line-height: 1.6; color: #6B2836; margin-bottom: 18px; }
+  .food-allergy-note strong { color: var(--alert); }
+
+  @media (max-width: 560px) {
+    .filter-label { width: 100%; margin-bottom: 2px; }
+    .header { flex-direction: column; }
+  }
+</style>
+</head>
+<body>
+<div class="shell">
+
+  <div class="header">
+    <button class="brand-row" id="brandRow" type="button" aria-label="Allergy Medication Finder — go to home">
+      <svg class="logo-mark" viewBox="0 0 200 200" xmlns="http://www.w3.org/2000/svg" aria-hidden="true">
+        <circle cx="100" cy="100" r="92" fill="#E4EDE1" stroke="#4F7355" stroke-width="5"/>
+        <text x="56" y="119" font-family="Fraunces, serif" font-weight="700" font-size="48" text-anchor="middle" fill="#375139">A</text>
+        <text x="100" y="119" font-family="Fraunces, serif" font-weight="700" font-size="48" text-anchor="middle" fill="#B8901E">M</text>
+        <text x="144" y="119" font-family="Fraunces, serif" font-weight="700" font-size="48" text-anchor="middle" fill="#375139">F</text>
+      </svg>
+      <div>
+        <div class="brand"><span class="brand-mark">Allergy</span> Medication Finder</div>
+        <div class="tagline">Find what actually helps, symptom by symptom.</div>
+      </div>
+    </button>
+    <div class="source-badge"><span class="dot"></span>Label details via openFDA, live</div>
+  </div>
+
+  <div id="homeView">
+    <div class="hero">
+      <h1>What's bothering you today?</h1>
+      <form class="search-box" id="searchForm">
+        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="11" cy="11" r="7"/><line x1="21" y1="21" x2="16.65" y2="16.65"/></svg>
+        <input type="text" id="searchInput" placeholder="Search a symptom, allergy, ingredient, or brand…" aria-label="Search allergy medicines">
+        <button class="search-go" type="button" id="searchBtn" aria-label="Search"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2"><line x1="5" y1="12" x2="19" y2="12"/><polyline points="12 5 19 12 12 19"/></svg></button>
+      </form>
+    </div>
+
+    <div class="symptom-picker" id="symptomPicker">
+      <div class="symptom-group">
+        <div class="symptom-group-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M3 8h10a2.5 2.5 0 10-2.5-2.5"/><path d="M3 13h14a2.5 2.5 0 11-2.5 2.5"/><path d="M3 18h7"/></svg>Nose &amp; sinus</div>
+        <div class="symptom-tiles">
+          <button class="symptom-tile" data-symptom="Sneezing">Sneezing</button>
+          <button class="symptom-tile" data-symptom="Runny nose">Runny nose</button>
+          <button class="symptom-tile" data-symptom="Congestion">Congestion</button>
+          <button class="symptom-tile" data-symptom="Postnasal drip">Postnasal drip</button>
+          <button class="symptom-tile" data-symptom="Sinus pressure">Sinus pressure</button>
+          <button class="symptom-tile" data-symptom="Itchy nose">Itchy nose</button>
+        </div>
+      </div>
+      <div class="symptom-group">
+        <div class="symptom-group-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M2 12s4-7 10-7 10 7 10 7-4 7-10 7-10-7-10-7z"/><circle cx="12" cy="12" r="3"/></svg>Eyes</div>
+        <div class="symptom-tiles">
+          <button class="symptom-tile" data-symptom="Itchy/watery eyes">Itchy/watery eyes</button>
+          <button class="symptom-tile" data-symptom="Red or puffy eyes">Red or puffy eyes</button>
+        </div>
+      </div>
+      <div class="symptom-group">
+        <div class="symptom-group-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M8 4l1.5 3M12 3v3.5M16 4l-1.5 3"/><rect x="4.5" y="9.5" width="15" height="10" rx="4.5"/></svg>Skin</div>
+        <div class="symptom-tiles">
+          <button class="symptom-tile" data-symptom="Hives">Hives</button>
+          <button class="symptom-tile" data-symptom="Itchy skin">Itchy skin</button>
+          <button class="symptom-tile" data-symptom="Skin rash">Skin rash</button>
+        </div>
+      </div>
+      <div class="symptom-group">
+        <div class="symptom-group-label"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M13 3a6 6 0 00-6 6c0 2.8 1.8 3.6 1.8 5.6A3.4 3.4 0 0012 18"/><path d="M13 7.5a2.5 2.5 0 012.5 2.5c0 1.6-1.7 1.7-1.7 3.4"/></svg>Throat &amp; ears</div>
+        <div class="symptom-tiles">
+          <button class="symptom-tile" data-symptom="Itchy/scratchy throat">Itchy/scratchy throat</button>
+          <button class="symptom-tile" data-symptom="Itchy ears">Itchy ears</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <div id="resultsView" class="hidden">
+    <button class="back-link" type="button" id="backBtn">&larr; All symptoms</button>
+    <h1 class="results-heading" id="resultsHeading">Results</h1>
+
+    <div class="food-allergy-note hidden" id="foodAllergyNote">
+      <strong>About food allergies.</strong> Reactions can range from mild (hives, itchy skin) to severe (throat tightness, trouble breathing, dizziness, swelling). The options below may help mild skin symptoms only. For a severe reaction, use epinephrine right away if it's been prescribed and call 911 — don't wait to see if it gets better. If you haven't been evaluated for this allergy, talk to a doctor or allergist rather than relying on OTC medicine alone.
+    </div>
+
+    <div class="filters">
+      <div class="misc-row" style="border-top:none;padding-top:0;">
+        <label class="checkbox-label"><input type="checkbox" id="nonDrowsyOnly"> Non-drowsy only</label>
+        <div class="select-wrap">
+          <select id="ageGroup" aria-label="Age group">
+            <option value="adult">Adult / teen (12+)</option>
+            <option value="child6">Child 6–11</option>
+            <option value="child2">Child 2–5</option>
+          </select>
+        </div>
+        <button id="resetBtn" type="button">&#8635; Reset</button>
+      </div>
+    </div>
+
+    <div class="results-count" id="resultsCount"></div>
+    <div class="grid" id="grid"></div>
+  </div>
+
+  <div class="disclaimer">
+    <strong>Not medical advice.</strong> This tool is for general information only and doesn't replace guidance from a doctor or pharmacist. Symptom and age filters are curated for search and aren't part of any official label. Purpose, warning, and dosage text is fetched live from the FDA's <a href="https://open.fda.gov" target="_blank" rel="noopener">openFDA</a> drug label database when available, or shown from a saved reference snapshot (Aug 2026) if openFDA can't be reached. Always read the actual package label and check with a pharmacist about interactions, pregnancy, or existing conditions before starting anything new.
+  </div>
+
+</div>
+
+<script>
+// ---------------------------------------------------------------------------
+// Data: curated for search/filtering (openFDA has no symptom/trigger taxonomy).
+// purpose / warningNote / dosageNote below are a fallback reference snapshot;
+// they are overwritten in the UI by a live openFDA lookup when one succeeds.
+// fdaQuery is the openfda.generic_name value used for that live lookup.
+// ---------------------------------------------------------------------------
+const MEDICINES = [
+  { id: 'loratadine', name: 'Loratadine', brands: 'Claritin, Alavert', form: 'pill', drowsy: false, ageMin: 2,
+    symptoms: ['Sneezing', 'Runny nose', 'Itchy nose', 'Itchy/scratchy throat', 'Itchy/watery eyes', 'Hives', 'Itchy ears'],
+    purpose: 'Antihistamine',
+    keywords: 'seasonal allergies pollen hay fever pet dander dust indoor outdoor antihistamine food allergy milk dairy egg hives',
+    description: 'A 24-hour antihistamine for everyday sneezing, itching, and runny nose.',
+    how: 'Blocks histamine, the chemical your body releases during an allergic reaction.',
+    warningNote: 'Considered non-drowsy for most people, though a small number still feel sleepy.',
+    dosageNote: 'Typically one dose a day for adults and children 6 and up — check the box for children\'s dosing.',
+    fdaQuery: 'LORATADINE' },
+
+  { id: 'cetirizine', name: 'Cetirizine', brands: 'Zyrtec', form: 'pill', drowsy: true, ageMin: 2,
+    symptoms: ['Sneezing', 'Runny nose', 'Itchy nose', 'Itchy/scratchy throat', 'Itchy/watery eyes', 'Hives', 'Itchy skin', 'Itchy ears'],
+    purpose: 'Antihistamine',
+    keywords: 'seasonal allergies pollen hay fever pet dander dust indoor skin contact antihistamine food allergy milk dairy peanut egg shellfish hives',
+    description: 'Fast-acting antihistamine, often reached for on high pollen-count days.',
+    how: 'Blocks histamine and tends to act a little faster than similar antihistamines.',
+    warningNote: 'Labeled non-drowsy but causes sleepiness in some people — see how you react before driving.',
+    dosageNote: 'Typically one dose a day for adults and children 6 and up.',
+    fdaQuery: 'CETIRIZINE HYDROCHLORIDE' },
+
+  { id: 'fexofenadine', name: 'Fexofenadine', brands: 'Allegra', form: 'pill', drowsy: false, ageMin: 2,
+    symptoms: ['Sneezing', 'Runny nose', 'Itchy nose', 'Itchy/scratchy throat', 'Itchy/watery eyes', 'Itchy ears'],
+    purpose: 'Antihistamine',
+    keywords: 'seasonal allergies pollen hay fever pet dander dust indoor antihistamine',
+    description: 'Non-drowsy antihistamine, a popular choice for daytime allergy relief.',
+    how: 'Blocks histamine without crossing into the brain as easily as older antihistamines.',
+    warningNote: "Avoid taking it with fruit juice, which can reduce how well it's absorbed.",
+    dosageNote: 'Usually once or twice a day depending on strength — follow the package directions.',
+    fdaQuery: 'FEXOFENADINE HYDROCHLORIDE' },
+
+  { id: 'levocetirizine', name: 'Levocetirizine', brands: 'Xyzal', form: 'pill', drowsy: true, ageMin: 6,
+    symptoms: ['Sneezing', 'Runny nose', 'Itchy nose', 'Hives', 'Itchy skin', 'Itchy ears'],
+    purpose: 'Antihistamine',
+    keywords: 'seasonal allergies pollen hay fever pet dander dust indoor skin contact antihistamine food allergy milk dairy peanut egg hives',
+    description: 'A nightly antihistamine option for ongoing seasonal or indoor allergies.',
+    how: "A more concentrated form of cetirizine's active component.",
+    warningNote: 'Many people take it in the evening since it can cause drowsiness.',
+    dosageNote: 'Typically one dose in the evening for adults and children 6 and up.',
+    fdaQuery: 'LEVOCETIRIZINE DIHYDROCHLORIDE' },
+
+  { id: 'diphenhydramine', name: 'Diphenhydramine', brands: 'Benadryl', form: 'pill', drowsy: true, ageMin: 2,
+    symptoms: ['Hives', 'Itchy skin', 'Skin rash', 'Sneezing', 'Runny nose', 'Itchy/watery eyes', 'Itchy ears'],
+    purpose: 'Antihistamine',
+    keywords: 'skin contact insect bite allergic reaction flare-up seasonal pollen antihistamine food allergy milk dairy peanut egg shellfish tree nut soy wheat hives',
+    description: 'Fast, strong relief for sudden flare-ups like hives — but it will make most people sleepy.',
+    how: 'An older-generation antihistamine that works quickly but also crosses into the brain.',
+    warningNote: 'Best for occasional, short-term use; avoid driving or drinking alcohol after taking it.',
+    dosageNote: "Taken every 4–6 hours as needed — don't exceed the daily limit on the label.",
+    fdaQuery: 'DIPHENHYDRAMINE HYDROCHLORIDE' },
+
+  { id: 'pseudoephedrine', name: 'Pseudoephedrine', brands: 'Sudafed', form: 'pill', drowsy: false, ageMin: 12,
+    symptoms: ['Congestion', 'Sinus pressure'],
+    purpose: 'Nasal decongestant',
+    keywords: 'seasonal allergies pollen sinus cold decongestant',
+    description: "A decongestant for stuffy sinuses — it won't help sneezing or itching on its own.",
+    how: 'Narrows swollen blood vessels in the nose to relieve pressure and stuffiness.',
+    warningNote: 'Sold behind the pharmacy counter in many states; check with a pharmacist if you have high blood pressure.',
+    dosageNote: 'Typically every 4–6 hours, with a daily maximum — check the label.',
+    fdaQuery: 'PSEUDOEPHEDRINE HYDROCHLORIDE' },
+
+  { id: 'loratadine-pseudoephedrine', name: 'Loratadine + Pseudoephedrine', brands: 'Claritin-D', form: 'pill', drowsy: false, ageMin: 12,
+    symptoms: ['Sneezing', 'Runny nose', 'Congestion', 'Sinus pressure'],
+    purpose: 'Antihistamine + nasal decongestant',
+    keywords: 'seasonal allergies pollen sinus decongestant antihistamine',
+    description: 'Combines an antihistamine with a decongestant for allergies that come with real sinus pressure.',
+    how: 'One ingredient blocks histamine while the other narrows swollen nasal blood vessels.',
+    warningNote: "Sold behind the pharmacy counter; not ideal if you have high blood pressure or trouble sleeping on stimulants.",
+    dosageNote: 'Typically one tablet every 24 hours for adults and children 12 and up.',
+    fdaQuery: 'LORATADINE AND PSEUDOEPHEDRINE SULFATE' },
+
+  { id: 'cetirizine-pseudoephedrine', name: 'Cetirizine + Pseudoephedrine', brands: 'Zyrtec-D', form: 'pill', drowsy: true, ageMin: 12,
+    symptoms: ['Sneezing', 'Runny nose', 'Congestion', 'Sinus pressure'],
+    purpose: 'Antihistamine + nasal decongestant',
+    keywords: 'seasonal allergies pollen sinus decongestant antihistamine',
+    description: 'Pairs a fast-acting antihistamine with a decongestant for stuffy, sneezy allergy days.',
+    how: 'One ingredient blocks histamine while the other narrows swollen nasal blood vessels.',
+    warningNote: 'The antihistamine half can still cause drowsiness even though the decongestant half is stimulating.',
+    dosageNote: 'Typically one tablet every 12 hours for adults and children 12 and up.',
+    fdaQuery: 'CETIRIZINE HYDROCHLORIDE AND PSEUDOEPHEDRINE HYDROCHLORIDE' },
+
+  { id: 'fluticasone', name: 'Fluticasone propionate', brands: 'Flonase', form: 'spray', drowsy: false, ageMin: 4,
+    symptoms: ['Congestion', 'Sinus pressure', 'Runny nose', 'Sneezing', 'Postnasal drip'],
+    purpose: 'Corticosteroid (nasal allergy symptom reliever)',
+    keywords: 'seasonal allergies pollen pet dander dust indoor nasal steroid',
+    description: 'Daily nasal spray that calms the inflammation behind congestion and sinus pressure.',
+    how: 'A steroid spray that reduces swelling and inflammation in the nasal passages.',
+    warningNote: 'Works best with consistent daily use — full effect can take several days to build up.',
+    dosageNote: 'Usually one to two sprays per nostril, once a day.',
+    fdaQuery: 'FLUTICASONE PROPIONATE' },
+
+  { id: 'triamcinolone', name: 'Triamcinolone acetonide', brands: 'Nasacort Allergy 24HR', form: 'spray', drowsy: false, ageMin: 2,
+    symptoms: ['Congestion', 'Sinus pressure', 'Runny nose', 'Sneezing', 'Postnasal drip'],
+    purpose: 'Corticosteroid (nasal allergy symptom reliever)',
+    keywords: 'seasonal allergies pollen pet dander dust indoor nasal steroid',
+    description: 'A once-daily steroid spray for the full range of nasal allergy symptoms.',
+    how: 'Reduces inflammation in the nasal passages so they stay open and calm.',
+    warningNote: 'Like other nasal steroids, it works gradually — give it a few days before judging results.',
+    dosageNote: 'Usually one to two sprays per nostril, once a day.',
+    fdaQuery: 'TRIAMCINOLONE ACETONIDE' },
+
+  { id: 'budesonide', name: 'Budesonide', brands: 'Rhinocort Allergy', form: 'spray', drowsy: false, ageMin: 6,
+    symptoms: ['Congestion', 'Runny nose', 'Sneezing', 'Postnasal drip'],
+    purpose: 'Corticosteroid (nasal allergy symptom reliever)',
+    keywords: 'seasonal allergies pollen pet dander dust indoor nasal steroid',
+    description: 'Another once-daily steroid spray option for ongoing nasal allergy symptoms.',
+    how: 'Reduces inflammation in the nasal passages so they stay open and calm.',
+    warningNote: 'Full effect builds over several days of regular, consistent use.',
+    dosageNote: 'Usually one to two sprays per nostril, once a day.',
+    fdaQuery: 'BUDESONIDE' },
+
+  { id: 'azelastine', name: 'Azelastine', brands: 'Astepro', form: 'spray', drowsy: true, ageMin: 6,
+    symptoms: ['Congestion', 'Runny nose', 'Sneezing'],
+    purpose: 'Antihistamine nasal spray',
+    keywords: 'seasonal allergies pollen pet dander dust indoor nasal antihistamine',
+    description: 'Antihistamine nasal spray for fast relief of congestion and sneezing.',
+    how: 'Delivers an antihistamine directly to nasal tissue for quick, localized relief.',
+    warningNote: 'May cause drowsiness or a bitter taste — some people prefer using it at night.',
+    dosageNote: 'Usually one to two sprays per nostril, once or twice a day.',
+    fdaQuery: 'AZELASTINE HYDROCHLORIDE' },
+
+  { id: 'cromolyn', name: 'Cromolyn sodium', brands: 'NasalCrom', form: 'spray', drowsy: false, ageMin: 2,
+    symptoms: ['Runny nose', 'Sneezing', 'Congestion'],
+    purpose: 'Allergy symptom preventer',
+    keywords: 'seasonal allergies pollen pet dander dust indoor prevention',
+    description: 'A preventive spray that works best when started before allergy season begins.',
+    how: 'Stabilizes the cells that release histamine, heading off symptoms before they start.',
+    warningNote: 'Needs to be used several times a day and started early to be most effective.',
+    dosageNote: 'Typically one spray per nostril, three to four times a day.',
+    fdaQuery: 'CROMOLYN SODIUM' },
+
+  { id: 'saline-rinse', name: 'Saline nasal spray/rinse', brands: 'Simply Saline, Ocean, generic', form: 'spray', drowsy: false, ageMin: 0,
+    symptoms: ['Congestion', 'Postnasal drip', 'Runny nose'],
+    purpose: 'Nasal moisturizer/rinse (drug-free)',
+    keywords: 'seasonal allergies pollen pet dander dust indoor drug-free natural',
+    description: 'A drug-free saltwater rinse that thins mucus and helps flush allergens out of the nose.',
+    how: 'Gently loosens and rinses away mucus and irritants using a saline solution — no active drug involved.',
+    warningNote: "Safe for frequent use, including in babies and during pregnancy — use distilled or previously boiled water if you're mixing your own.",
+    dosageNote: 'Can be used as often as needed, before or alongside other allergy medicines.',
+    fdaQuery: 'SODIUM CHLORIDE' },
+
+  { id: 'ketotifen', name: 'Ketotifen', brands: 'Zaditor, Alaway', form: 'drops', drowsy: false, ageMin: 3,
+    symptoms: ['Itchy/watery eyes', 'Red or puffy eyes'],
+    purpose: 'Eye allergy itch reliever (antihistamine)',
+    keywords: 'seasonal allergies pollen pet dander dust indoor eye allergy antihistamine',
+    description: 'Eye drops that calm itchy, watery eyes from allergies.',
+    how: 'Blocks histamine directly at the surface of the eye.',
+    warningNote: 'Usually used twice a day; wait a few minutes before putting in contact lenses.',
+    dosageNote: 'One drop in each affected eye, about every 8–12 hours.',
+    fdaQuery: 'KETOTIFEN FUMARATE' },
+
+  { id: 'olopatadine', name: 'Olopatadine', brands: 'Pataday', form: 'drops', drowsy: false, ageMin: 2,
+    symptoms: ['Itchy/watery eyes', 'Red or puffy eyes'],
+    purpose: 'Eye allergy itch reliever (antihistamine)',
+    keywords: 'seasonal allergies pollen pet dander dust indoor eye allergy antihistamine',
+    description: 'Once-daily eye drops for itchy, watery allergy eyes.',
+    how: 'A long-acting antihistamine formulated specifically for eye tissue.',
+    warningNote: 'One dose a day is usually enough to last through pollen-heavy afternoons.',
+    dosageNote: 'One drop in each affected eye, once daily.',
+    fdaQuery: 'OLOPATADINE HYDROCHLORIDE' },
+
+  { id: 'naphazoline-pheniramine', name: 'Naphazoline + Pheniramine', brands: 'Naphcon-A, Opcon-A, Visine-A', form: 'drops', drowsy: false, ageMin: 6,
+    symptoms: ['Red or puffy eyes', 'Itchy/watery eyes'],
+    purpose: 'Eye redness reliever + antihistamine',
+    keywords: 'seasonal allergies pollen pet dander dust indoor eye allergy redness',
+    description: 'Eye drops that tackle both the itch and the redness of allergy eyes.',
+    how: 'One ingredient blocks histamine while the other narrows blood vessels in the eye to reduce redness.',
+    warningNote: 'Not meant for more than a few days in a row — overuse can cause redness to rebound and worsen.',
+    dosageNote: 'Usually one to two drops in the affected eye(s), up to four times a day.',
+    fdaQuery: 'NAPHAZOLINE HYDROCHLORIDE AND PHENIRAMINE MALEATE' },
+
+  { id: 'hydrocortisone', name: 'Hydrocortisone 1%', brands: 'Cortizone-10, generic', form: 'cream', drowsy: false, ageMin: 2,
+    symptoms: ['Itchy skin', 'Skin rash'],
+    purpose: 'Topical anti-itch (mild corticosteroid)',
+    keywords: 'skin contact eczema poison ivy insect bite rash topical allergic reaction',
+    description: 'A mild steroid cream for localized itchy patches or rash from skin contact allergies.',
+    how: "Calms inflammation and itch right at the site where it's applied.",
+    warningNote: 'For short-term use on small areas — check with a doctor before using on broken skin or for more than a week.',
+    dosageNote: 'Apply a thin layer to the affected area, up to three to four times a day.',
+    fdaQuery: 'HYDROCORTISONE' },
+
+  { id: 'menthol-lozenge', name: 'Menthol throat lozenges', brands: 'Halls, Cepacol, generic', form: 'lozenge', drowsy: false, ageMin: 5,
+    symptoms: ['Itchy/scratchy throat'],
+    purpose: 'Oral anesthetic/throat soother',
+    keywords: 'postnasal drip sore throat seasonal allergies pollen',
+    description: 'A simple lozenge to soothe a scratchy throat caused by postnasal drip.',
+    how: 'Menthol lightly numbs and cools the throat while stimulating saliva to keep it moist.',
+    warningNote: 'Choking hazard for young children — not recommended under about age 5.',
+    dosageNote: 'Dissolve one in the mouth as needed; check the label for a daily maximum.',
+    fdaQuery: 'MENTHOL' },
+];
+
+const FORM_ICON = {
+  pill: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><rect x="3.5" y="8.5" width="17" height="7" rx="3.5" transform="rotate(-25 12 12)"/><line x1="10.8" y1="6.3" x2="13.2" y2="17.7" transform="rotate(-25 12 12)"/></svg>',
+  spray: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><path d="M9 3h4v3H9z"/><path d="M8 6h6l1 4-1 11H9L8 10z"/><path d="M17 8c1 .5 1 1.5 0 2M19 6c2 1 2 3 0 4"/></svg>',
+  drops: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><path d="M12 3c4 5 6 8.5 6 11a6 6 0 11-12 0c0-2.5 2-6 6-11z"/></svg>',
+  cream: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"><path d="M8.5 3h7l1 3.2h-9z"/><path d="M7.3 6.2h9.4l1.6 12.3a2 2 0 01-2 2.3H7.7a2 2 0 01-2-2.3z"/></svg>',
+  lozenge: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8"><ellipse cx="12" cy="12" rx="8.5" ry="5.5"/></svg>',
+};
+
+// ---------------------------------------------------------------------------
+// State
+// ---------------------------------------------------------------------------
+const ALL_SYMPTOMS = ['Sneezing', 'Runny nose', 'Congestion', 'Postnasal drip', 'Sinus pressure', 'Itchy nose',
+  'Itchy/watery eyes', 'Red or puffy eyes', 'Hives', 'Itchy skin', 'Skin rash', 'Itchy/scratchy throat', 'Itchy ears'];
+
+const state = {
+  symptom: null,   // currently viewed symptom, or null when on a free-text search
+  query: '',       // currently viewed free-text search, or '' when on a symptom
+  nonDrowsyOnly: false,
+  ageGroup: 'adult',
+  expanded: null,
+  foodAllergen: false, // true when the current results came from a food-allergen search (milk, peanut, etc.)
+};
+const liveCache = {}; // id -> { purpose, warning, dosage } | { error: true }
+
+const homeView = document.getElementById('homeView');
+const resultsView = document.getElementById('resultsView');
+const symptomPicker = document.getElementById('symptomPicker');
+const searchForm = document.getElementById('searchForm');
+const searchInput = document.getElementById('searchInput');
+const searchBtn = document.getElementById('searchBtn');
+const backBtn = document.getElementById('backBtn');
+const brandRow = document.getElementById('brandRow');
+const resultsHeading = document.getElementById('resultsHeading');
+const foodAllergyNote = document.getElementById('foodAllergyNote');
+const grid = document.getElementById('grid');
+const countEl = document.getElementById('resultsCount');
+const nonDrowsyBox = document.getElementById('nonDrowsyOnly');
+const ageSelect = document.getElementById('ageGroup');
+const resetBtn = document.getElementById('resetBtn');
+
+// ---------------------------------------------------------------------------
+// Filtering + rendering
+// ---------------------------------------------------------------------------
+function ageThreshold() {
+  return state.ageGroup === 'child2' ? 2 : state.ageGroup === 'child6' ? 6 : 12;
+}
+
+function normalize(s) {
+  return s.toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim();
+}
+
+// Basic English pluralization tolerance ("peanut" <-> "peanuts", "allergy" <-> "allergies"),
+// so search isn't limited to whichever exact form happens to be stored in the data.
+function stem(word) {
+  if (word.length > 4 && word.endsWith('ies')) return word.slice(0, -3) + 'y';
+  if (word.length > 3 && word.endsWith('s') && !word.endsWith('ss')) return word.slice(0, -1);
+  return word;
+}
+
+function wordsMatch(a, b) {
+  if (a === b) return true;
+  if (stem(a) === stem(b)) return true;
+  if (a.length >= 3 && b.length >= 3 && (a.includes(b) || b.includes(a))) return true;
+  return false;
+}
+
+// True when every word in `query` has a matching word somewhere in `text` — order and
+// adjacency don't matter, and singular/plural forms of the same word are treated as equal.
+function queryMatchesText(query, text) {
+  const queryWords = normalize(query).split(' ').filter(Boolean);
+  const textWords = normalize(text).split(' ').filter(Boolean);
+  if (!queryWords.length) return true;
+  return queryWords.every((qw) => textWords.some((tw) => wordsMatch(qw, tw)));
+}
+
+// If typed text matches (or is close to) one of the known symptoms, resolve to it
+// so the results page can show a clean "Medicines for X" heading instead of a raw query.
+function resolveQueryToSymptom(raw) {
+  const q = normalize(raw);
+  if (!q) return null;
+  const exact = ALL_SYMPTOMS.find((s) => normalize(s) === q);
+  if (exact) return exact;
+  return ALL_SYMPTOMS.find((s) => normalize(s).includes(q) || q.includes(normalize(s))) || null;
+}
+
+// The FDA's "big nine" major food allergens, plus common everyday phrasings.
+// Food allergies can escalate to anaphylaxis in a way pollen/dust/pet allergies
+// essentially never do, so a match here triggers a distinct safety note (see renderResults).
+const FOOD_ALLERGENS = ['milk', 'dairy', 'lactose', 'peanut', 'peanuts', 'tree nut', 'tree nuts',
+  'almond', 'cashew', 'walnut', 'egg', 'eggs', 'shellfish', 'shrimp', 'crab', 'lobster',
+  'soy', 'soybean', 'wheat', 'gluten', 'fish', 'sesame'];
+
+function isFoodAllergenQuery(raw) {
+  const q = normalize(raw);
+  if (!q) return false;
+  return FOOD_ALLERGENS.some((f) => queryMatchesText(f, q));
+}
+
+// --- "Did you mean...?" spelling suggestions for searches that return nothing ---
+
+// Levenshtein distance with adjacent-transposition support (so "eyse" -> "eyes" counts
+// as one edit, not two) — this is the most common typo pattern alongside missing/extra
+// letters, so it matters for catching realistic misspellings.
+function editDistance(a, b) {
+  const m = a.length, n = b.length;
+  const d = Array.from({ length: m + 1 }, () => new Array(n + 1).fill(0));
+  for (let i = 0; i <= m; i++) d[i][0] = i;
+  for (let j = 0; j <= n; j++) d[0][j] = j;
+  for (let i = 1; i <= m; i++) {
+    for (let j = 1; j <= n; j++) {
+      const cost = a[i - 1] === b[j - 1] ? 0 : 1;
+      d[i][j] = Math.min(
+        d[i - 1][j] + 1,
+        d[i][j - 1] + 1,
+        d[i - 1][j - 1] + cost
+      );
+      if (i > 1 && j > 1 && a[i - 1] === b[j - 2] && a[i - 2] === b[j - 1]) {
+        d[i][j] = Math.min(d[i][j], d[i - 2][j - 2] + 1);
+      }
+    }
+  }
+  return d[m][n];
+}
+
+// Correctly-spelled words worth suggesting: symptom names, food allergens, and medicine
+// names/brands — built once, since none of these change while the page is open.
+const SEARCH_VOCABULARY = (() => {
+  const words = new Set();
+  const addWords = (text) => normalize(text).split(' ').forEach((w) => { if (w.length >= 4) words.add(w); });
+  ALL_SYMPTOMS.forEach(addWords);
+  FOOD_ALLERGENS.forEach(addWords);
+  MEDICINES.forEach((m) => { addWords(m.name); addWords(m.brands); addWords(m.purpose); addWords(m.keywords); });
+  return [...words];
+})();
+
+// Returns a corrected version of `raw` if it looks like a near-miss typo of something in
+// the vocabulary, or null if `raw` is already fine (or too far off to guess confidently).
+function suggestCorrection(raw) {
+  const words = normalize(raw).split(' ').filter(Boolean);
+  let changed = false;
+  const corrected = words.map((w) => {
+    if (w.length < 4 || SEARCH_VOCABULARY.includes(w)) return w;
+    let best = null, bestDist = Infinity;
+    for (const candidate of SEARCH_VOCABULARY) {
+      const d = editDistance(w, candidate);
+      if (d < bestDist) { bestDist = d; best = candidate; }
+    }
+    const threshold = w.length <= 5 ? 1 : 2; // tighter tolerance for short words
+    if (best && bestDist > 0 && bestDist <= threshold) { changed = true; return best; }
+    return w;
+  });
+  return changed ? corrected.join(' ') : null;
+}
+
+function getFiltered() {
+  const threshold = ageThreshold();
+  return MEDICINES.filter((m) => {
+    if (state.nonDrowsyOnly && m.drowsy) return false;
+    if (m.ageMin > threshold) return false;
+    if (state.symptom) return m.symptoms.includes(state.symptom);
+    if (state.query.trim()) {
+      const hay = `${m.name} ${m.brands} ${m.description} ${m.symptoms.join(' ')} ${m.purpose} ${m.keywords}`;
+      return queryMatchesText(state.query, hay);
+    }
+    return true;
+  });
+}
+
+function cardHTML(m) {
+  const isOpen = state.expanded === m.id;
+  return `
+    <div class="card" data-id="${m.id}">
+      <div class="card-top">
+        <div class="card-icon-row">
+          <div class="card-icon">${FORM_ICON[m.form]}</div>
+          <div>
+            <div class="card-name">${m.name}</div>
+            <div class="card-brands">${m.brands}</div>
+          </div>
+        </div>
+        <span class="badge ${m.drowsy ? 'badge-alert' : 'badge-calm'}">${m.drowsy ? 'May cause drowsiness' : 'Non-drowsy'}</span>
+      </div>
+      <div class="card-desc">${m.description}</div>
+      <div class="card-tags">${m.symptoms.slice(0, 3).map((s) => `<span class="mini-tag">${s}</span>`).join('')}</div>
+      ${isOpen ? detailHTML(m) : ''}
+    </div>`;
+}
+
+function detailHTML(m) {
+  const fdaUrl = `https://api.fda.gov/drug/label.json?search=openfda.generic_name:%22${encodeURIComponent(m.fdaQuery)}%22&limit=1`;
+  return `
+    <div class="detail" data-detail="${m.id}">
+      <p><strong>Purpose.</strong> <span class="live-purpose">${m.purpose}</span></p>
+      <p><strong>How it works.</strong> ${m.how}</p>
+      <div class="source-row">
+        <span class="source-tag" data-role="status">Saved reference · Aug 2026</span>
+        <button class="refresh-btn" type="button" data-role="refresh">⟳ Check openFDA</button>
+      </div>
+      <p class="live-warning"><strong>Good to know.</strong> ${m.warningNote}</p>
+      <p class="live-dosage"><strong>Typical use.</strong> ${m.dosageNote}</p>
+      <a class="source-link" href="${fdaUrl}" target="_blank" rel="noopener">View raw openFDA record ↗</a>
+    </div>`;
+}
+
+function renderResults() {
+  resultsHeading.textContent = state.symptom ? `Medicines for ${state.symptom}` : `Results for "${state.query}"`;
+  foodAllergyNote.classList.toggle('hidden', !state.foodAllergen);
+  const results = getFiltered();
+  countEl.textContent = `${results.length} result${results.length !== 1 ? 's' : ''}`;
+  if (!results.length) {
+    const suggestion = (!state.symptom && state.query) ? suggestCorrection(state.query) : null;
+    if (suggestion) {
+      grid.innerHTML = `
+        <div class="empty-state" style="grid-column:1/-1">
+          <h3>No results found for "${escapeHtml(state.query)}"</h3>
+          <p>Maybe you were searching for <button type="button" class="suggestion-link" id="suggestionBtn">${escapeHtml(suggestion)}</button>?</p>
+        </div>`;
+      document.getElementById('suggestionBtn').addEventListener('click', () => navigateToSearch(suggestion));
+    } else {
+      grid.innerHTML = `
+        <div class="empty-state" style="grid-column:1/-1">
+          <h3>No matches here</h3>
+          <p>Try turning off "non-drowsy only" or widening the age range.</p>
+          <button type="button" id="emptyResetBtn">Reset these filters</button>
+        </div>`;
+      document.getElementById('emptyResetBtn').addEventListener('click', resetRefinements);
+    }
+    return;
+  }
+  grid.innerHTML = results.map(cardHTML).join('');
+  if (state.expanded) loadLive(state.expanded);
+}
+
+// ---------------------------------------------------------------------------
+// View routing (two "pages" in one file: home symptom-picker, and results)
+// ---------------------------------------------------------------------------
+function showHome() {
+  resultsView.classList.add('hidden');
+  homeView.classList.remove('hidden');
+  window.scrollTo(0, 0);
+}
+
+function showResults() {
+  state.expanded = null;
+  homeView.classList.add('hidden');
+  resultsView.classList.remove('hidden');
+  renderResults();
+  window.scrollTo(0, 0);
+}
+
+function navigateToSymptom(symptom, push = true) {
+  state.symptom = symptom;
+  state.query = '';
+  state.foodAllergen = false;
+  showResults();
+  if (push) safePushState({ symptom }, `?symptom=${encodeURIComponent(symptom)}`);
+}
+
+function navigateToSearch(raw, push = true) {
+  const match = resolveQueryToSymptom(raw);
+  if (match) { navigateToSymptom(match, push); return; }
+  state.symptom = null;
+  state.query = raw;
+  state.foodAllergen = isFoodAllergenQuery(raw);
+  showResults();
+  if (push) safePushState({ query: raw }, `?q=${encodeURIComponent(raw)}`);
+}
+
+function navigateHome(push = true) {
+  state.symptom = null;
+  state.query = '';
+  state.foodAllergen = false;
+  showHome();
+  if (push) safePushState({}, window.location.pathname);
+}
+
+// history.pushState throws a SecurityError in sandboxed preview contexts (e.g. an
+// iframe loaded via srcdoc, which has no real URL of its own to update). Views still
+// switch normally via state + DOM either way — this just skips the address-bar update
+// when the environment won't allow it, instead of crashing the interaction.
+function safePushState(data, url) {
+  try {
+    history.pushState(data, '', url);
+  } catch (err) {
+    // no-op: not fatal, URL/back-button support just isn't available here
+  }
+}
+
+function routeFromLocation() {
+  const params = new URLSearchParams(window.location.search);
+  const symptom = params.get('symptom');
+  const q = params.get('q');
+  if (symptom) { state.symptom = symptom; state.query = ''; state.foodAllergen = false; showResults(); }
+  else if (q) { state.symptom = null; state.query = q; state.foodAllergen = isFoodAllergenQuery(q); searchInput.value = q; showResults(); }
+  else { showHome(); }
+}
+
+window.addEventListener('popstate', routeFromLocation);
+
+// ---------------------------------------------------------------------------
+// Live openFDA lookups (lazy: only when a card is expanded)
+// ---------------------------------------------------------------------------
+function firstOrNull(v) {
+  if (Array.isArray(v) && v.length) return v[0];
+  if (typeof v === 'string' && v) return v;
+  return null;
+}
+
+function truncate(s, n) {
+  if (!s || s.length <= n) return s;
+  return s.slice(0, n).replace(/\s+\S*$/, '') + '…';
+}
+
+function escapeHtml(str) {
+  const div = document.createElement('div');
+  div.textContent = str;
+  return div.innerHTML;
+}
+
+async function loadLive(id) {
+  const statusEl = document.querySelector(`[data-detail="${id}"] [data-role="status"]`);
+  if (!statusEl) return;
+  if (liveCache[id]) { paintLive(id); return; }
+
+  statusEl.textContent = 'Checking openFDA…';
+  const med = MEDICINES.find((x) => x.id === id);
+  try {
+    const url = `https://api.fda.gov/drug/label.json?search=openfda.generic_name:"${encodeURIComponent(med.fdaQuery)}"&limit=1`;
+    const res = await fetch(url);
+    if (!res.ok) throw new Error('status ' + res.status);
+    const data = await res.json();
+    const rec = data.results && data.results[0];
+    if (!rec) throw new Error('no match');
+    liveCache[id] = {
+      purpose: firstOrNull(rec.purpose),
+      warning: firstOrNull(rec.warnings) || firstOrNull(rec.do_not_use) || firstOrNull(rec.ask_doctor) || firstOrNull(rec.ask_doctor_or_pharmacist),
+      dosage: firstOrNull(rec.dosage_and_administration),
+    };
+  } catch (err) {
+    liveCache[id] = { error: true };
+  }
+  paintLive(id);
+}
+
+function paintLive(id) {
+  const scope = document.querySelector(`[data-detail="${id}"]`);
+  if (!scope) return; // card may have been collapsed while the request was in flight
+  const statusEl = scope.querySelector('[data-role="status"]');
+  const cached = liveCache[id];
+
+  if (!cached || cached.error) {
+    statusEl.textContent = 'openFDA unavailable right now · showing Aug 2026 reference';
+    return;
+  }
+  statusEl.textContent = 'Live from openFDA · just now';
+  if (cached.purpose) scope.querySelector('.live-purpose').textContent = cached.purpose;
+  if (cached.warning) {
+    scope.querySelector('.live-warning').innerHTML =
+      `<strong>From the FDA label.</strong> ${escapeHtml(truncate(cached.warning, 380))}`;
+  }
+  if (cached.dosage) {
+    scope.querySelector('.live-dosage').innerHTML =
+      `<strong>Directions.</strong> ${escapeHtml(truncate(cached.dosage, 320))}`;
+  }
+}
+
+// ---------------------------------------------------------------------------
+// Events
+// ---------------------------------------------------------------------------
+symptomPicker.addEventListener('click', (e) => {
+  const btn = e.target.closest('.symptom-tile');
+  if (!btn) return;
+  navigateToSymptom(btn.dataset.symptom);
+});
+
+function triggerSearch() {
+  const val = searchInput.value.trim();
+  if (val) navigateToSearch(val);
+}
+searchBtn.addEventListener('click', triggerSearch);
+searchInput.addEventListener('keydown', (e) => {
+  if (e.key === 'Enter') {
+    e.preventDefault(); // stop any native implicit form submission, which sandboxed previews block silently
+    triggerSearch();
+  }
+});
+
+backBtn.addEventListener('click', () => navigateHome());
+brandRow.addEventListener('click', () => navigateHome());
+
+grid.addEventListener('click', (e) => {
+  const link = e.target.closest('a');
+  if (link) return; // let it open normally
+
+  const refreshBtn = e.target.closest('[data-role="refresh"]');
+  if (refreshBtn) {
+    e.stopPropagation();
+    const id = e.target.closest('.card').dataset.id;
+    delete liveCache[id];
+    loadLive(id);
+    return;
+  }
+
+  const card = e.target.closest('.card');
+  if (!card) return;
+  const id = card.dataset.id;
+  state.expanded = state.expanded === id ? null : id;
+  renderResults();
+});
+
+nonDrowsyBox.addEventListener('change', () => {
+  state.nonDrowsyOnly = nonDrowsyBox.checked;
+  renderResults();
+});
+
+ageSelect.addEventListener('change', () => {
+  state.ageGroup = ageSelect.value;
+  renderResults();
+});
+
+function resetRefinements() {
+  state.nonDrowsyOnly = false; state.ageGroup = 'adult'; state.expanded = null;
+  nonDrowsyBox.checked = false; ageSelect.value = 'adult';
+  renderResults();
+}
+resetBtn.addEventListener('click', resetRefinements);
+
+routeFromLocation();
+</script>
+</body>
+</html>
